@@ -1,3 +1,4 @@
 node_modules
 dist
 **/static/models
+**/static/textures

@@ -1,28 +1,106 @@
-import './style.css'
+import './css/style.css'
+import './css/layout.scss'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import * as dat from 'dat.gui'
-import * as Stats from 'stats.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { gsap } from 'gsap'
+
 import waterVertexShader from './shaders/water/vertex.glsl'
 import waterFragmentShader from './shaders/water/fragment.glsl'
-
-const stats = new Stats()
-const body = document.querySelector('body')
-
-body.appendChild(stats.dom)
+import * as dat from 'dat.gui'
+import * as Stats from 'stats.js'
 
 /**
- * Base
+ *  Stats util
  */
-// Debug
+const stats = new Stats()
+stats.showPanel(0)
+document.querySelector('body').appendChild(stats.dom)
+
+/**
+ *  Degug
+ */
 const gui = new dat.GUI({ width: 340 })
 const debugObject = {}
+
+/**
+ * ! Loading
+ */
+
+/**
+ * Loaders
+ */
+
+const loadingBarElement = document.querySelector('.loading-bar')
+
+const loadingManager = new THREE.LoadingManager(
+    () => {
+        // console.log('Loaded')
+        gsap.delayedCall(0.5, () => {
+            gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0 })
+            loadingBarElement.classList.add('ended')
+            loadingBarElement.style.transform = ''
+        })
+    },
+    (itemURL, itemsLoaded, itemsTotal) => {
+        // Progress
+        const progressRatio = itemsLoaded / itemsTotal
+        loadingBarElement.style.transform = `scaleX(${progressRatio})`
+        // console.log(progressRatio)
+    }
+)
+
+const gltfLoader = new GLTFLoader(loadingManager)
+
+gltfLoader.load('./models/FlightHelmet/glTF/FlightHelmet.gltf', (gltf) => {
+    scene.add(gltf.scene)
+})
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+
+/**
+ *  ! Loader Overlay
+ */
+
+const overlayGeometry = new THREE.PlaneBufferGeometry(2, 2, 1, 1)
+const overlayMaterial = new THREE.ShaderMaterial({
+    transparent: true,
+    uniforms: {
+        uAlpha: { value: 1 },
+    },
+    vertexShader: `
+
+        void main()
+        {
+            // vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+            // vec4 viewPosition = viewMatrix * modelPosition;
+            // vec4 projectedPosition = projectionMatrix * viewPosition;
+
+            // vec4 pos = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+            vec4 pos = vec4(position,1.0);
+
+            gl_Position = pos;
+        }
+    `,
+    fragmentShader: `
+
+    uniform float uAlpha;
+
+    void main()
+    {
+        vec4 color = vec4(0.0,0.0,0.0,uAlpha);
+
+        gl_FragColor = vec4(color);
+    }
+
+    `,
+})
+const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
+scene.add(overlay)
 
 /**
  * Water
@@ -42,31 +120,31 @@ scene.fog = fog
 
 // Material
 const waterMaterial = new THREE.ShaderMaterial({
-  vertexShader: waterVertexShader,
-  fragmentShader: waterFragmentShader,
-  uniforms: {
-    uTime: { value: 0 },
+    vertexShader: waterVertexShader,
+    fragmentShader: waterFragmentShader,
+    uniforms: {
+        uTime: { value: 0 },
 
-    uBigWavesElevation: { value: 0.2 },
-    uBigWavesFrequency: { value: new THREE.Vector2(4, 1.5) },
-    uBigWavesSpeed: { value: 1.0 },
+        uBigWavesElevation: { value: 0.2 },
+        uBigWavesFrequency: { value: new THREE.Vector2(4, 1.5) },
+        uBigWavesSpeed: { value: 1.0 },
 
-    uSmallWavesElevation: { value: 0.1 },
-    uSmallWavesFrequency: { value: 3 },
-    uSmallWavesSpeed: { value: 0.2 },
-    uSmallWavesIterations: { value: 4.2 },
+        uSmallWavesElevation: { value: 0.1 },
+        uSmallWavesFrequency: { value: 3 },
+        uSmallWavesSpeed: { value: 0.2 },
+        uSmallWavesIterations: { value: 4.2 },
 
-    uDepthColor: { value: new THREE.Color(debugObject.depthColor) },
-    uSurfaceColor: { value: new THREE.Color(debugObject.surfaceColor) },
-    uColorOffset: { value: 0.08 },
-    uColorMultiplier: { value: 5 },
+        uDepthColor: { value: new THREE.Color(debugObject.depthColor) },
+        uSurfaceColor: { value: new THREE.Color(debugObject.surfaceColor) },
+        uColorOffset: { value: 0.08 },
+        uColorMultiplier: { value: 5 },
 
-    fogColor: { type: 'c', value: scene.fog.color },
-    fogNear: { type: 'f', value: scene.fog.near },
-    fogFar: { type: 'f', value: scene.fog.far },
-  },
-  fog: true,
-  side: THREE.DoubleSide,
+        fogColor: { type: 'c', value: scene.fog.color },
+        fogNear: { type: 'f', value: scene.fog.near },
+        fogFar: { type: 'f', value: scene.fog.far },
+    },
+    fog: true,
+    side: THREE.DoubleSide,
 })
 
 // Degug
@@ -80,28 +158,25 @@ gui.add(waterMaterial.uniforms.uSmallWavesFrequency, 'value').min(0).max(30).ste
 gui.add(waterMaterial.uniforms.uSmallWavesSpeed, 'value').min(0).max(4).step(0.001).name('uSmallWavesSpeed')
 gui.add(waterMaterial.uniforms.uSmallWavesIterations, 'value').min(0).max(8).step(1).name('uSmallWavesIteration')
 
-gui
-  .addColor(debugObject, 'depthColor')
-  .name('depthColor')
-  .onChange(() => {
-    waterMaterial.uniforms.uDepthColor.value.set(debugObject.depthColor)
-  })
-gui
-  .addColor(debugObject, 'surfaceColor')
-  .name('surfaceColor')
-  .onChange(() => {
-    waterMaterial.uniforms.uSurfaceColor.value.set(debugObject.surfaceColor)
-    waterMaterial.uniforms.fogColor.value.set(debugObject.surfaceColor)
-    renderer.setClearColor(debugObject.surfaceColor)
-  })
+gui.addColor(debugObject, 'depthColor')
+    .name('depthColor')
+    .onChange(() => {
+        waterMaterial.uniforms.uDepthColor.value.set(debugObject.depthColor)
+    })
+gui.addColor(debugObject, 'surfaceColor')
+    .name('surfaceColor')
+    .onChange(() => {
+        waterMaterial.uniforms.uSurfaceColor.value.set(debugObject.surfaceColor)
+        waterMaterial.uniforms.fogColor.value.set(debugObject.surfaceColor)
+        renderer.setClearColor(debugObject.surfaceColor)
+    })
 
-gui
-  .addColor(debugObject, 'fogColor')
-  .name('fogColor')
-  .onChange(() => {
-    waterMaterial.uniforms.fogColor.value.set(debugObject.fogColor)
-    renderer.setClearColor(debugObject.fogColor)
-  })
+gui.addColor(debugObject, 'fogColor')
+    .name('fogColor')
+    .onChange(() => {
+        waterMaterial.uniforms.fogColor.value.set(debugObject.fogColor)
+        renderer.setClearColor(debugObject.fogColor)
+    })
 
 gui.add(waterMaterial.uniforms.uColorOffset, 'value').min(0).max(1).step(0.001).name('uColorOffset')
 gui.add(waterMaterial.uniforms.uColorMultiplier, 'value').min(0).max(10).step(0.001).name('uColorMultiplier')
@@ -115,22 +190,22 @@ scene.add(water)
  * Sizes
  */
 const sizes = {
-  width: window.innerWidth,
-  height: window.innerHeight,
+    width: window.innerWidth,
+    height: window.innerHeight,
 }
 
 window.addEventListener('resize', () => {
-  // Update sizes
-  sizes.width = window.innerWidth
-  sizes.height = window.innerHeight
+    // Update sizes
+    sizes.width = window.innerWidth
+    sizes.height = window.innerHeight
 
-  // Update camera
-  camera.aspect = sizes.width / sizes.height
-  camera.updateProjectionMatrix()
+    // Update camera
+    camera.aspect = sizes.width / sizes.height
+    camera.updateProjectionMatrix()
 
-  // Update renderer
-  renderer.setSize(sizes.width, sizes.height)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Update renderer
+    renderer.setSize(sizes.width, sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
 /**
@@ -149,7 +224,7 @@ controls.enableDamping = true
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-  canvas: canvas,
+    canvas: canvas,
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -161,18 +236,18 @@ renderer.setClearColor(debugObject.fogColor)
 const clock = new THREE.Clock()
 
 const tick = () => {
-  const elapsedTime = clock.getElapsedTime()
+    const elapsedTime = clock.getElapsedTime()
 
-  // Update water
-  waterMaterial.uniforms.uTime.value = elapsedTime
-  // Update controls
-  controls.update()
-  stats.update()
-  // Render
-  renderer.render(scene, camera)
+    // Update water
+    waterMaterial.uniforms.uTime.value = elapsedTime
+    // Update controls
+    controls.update()
+    stats.update()
+    // Render
+    renderer.render(scene, camera)
 
-  // Call tick again on the next frame
-  window.requestAnimationFrame(tick)
+    // Call tick again on the next frame
+    window.requestAnimationFrame(tick)
 }
 
 tick()

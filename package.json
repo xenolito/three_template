@@ -20,11 +20,14 @@
     "three": "^0.125.1",
     "webpack": "^5.18.0",
     "webpack-cli": "^4.4.0",
-    "webpack-dev-server": "^3.11.2",
     "webpack-merge": "^5.7.3"
   },
   "devDependencies": {
+    "gsap": "^3.6.0",
+    "node-sass": "^5.0.0",
     "raw-loader": "^4.0.2",
-    "stats.js": "^0.17.0"
+    "sass-loader": "^11.0.1",
+    "stats.js": "^0.17.0",
+    "webpack-dev-server": "^3.11.2"
   }
 }

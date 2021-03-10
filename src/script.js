@@ -13,9 +13,10 @@ import * as Stats from 'stats.js'
 /**
  *  Stats util
  */
+const body = document.querySelector('body')
 const stats = new Stats()
 stats.showPanel(0)
-document.querySelector('body').appendChild(stats.dom)
+body.appendChild(stats.dom)
 
 /**
  *  Degug
@@ -35,8 +36,8 @@ const loadingBarElement = document.querySelector('.loading-bar')
 
 const loadingManager = new THREE.LoadingManager(
     () => {
-        // console.log('Loaded')
-        gsap.delayedCall(0.5, () => {
+        if (dc) dc.kill()
+        var dc = gsap.delayedCall(0.5, () => {
             gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0 })
             loadingBarElement.classList.add('ended')
             loadingBarElement.style.transform = ''
@@ -52,9 +53,11 @@ const loadingManager = new THREE.LoadingManager(
 
 const gltfLoader = new GLTFLoader(loadingManager)
 
-gltfLoader.load('./models/FlightHelmet/glTF/FlightHelmet.gltf', (gltf) => {
-    scene.add(gltf.scene)
-})
+// gltfLoader.load('./models/DamagedHelmet/glTF/DamagedHelmet.gltf', (gltf) => {
+//     gltf.scene.scale.set(0.15, 0.15, 0.15)
+//     gltf.scene.position.y = 0.5
+//     scene.add(gltf.scene)
+// })
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -66,60 +69,64 @@ const scene = new THREE.Scene()
  *  ! Loader Overlay
  */
 
-const overlayGeometry = new THREE.PlaneBufferGeometry(2, 2, 1, 1)
-const overlayMaterial = new THREE.ShaderMaterial({
-    transparent: true,
-    uniforms: {
-        uAlpha: { value: 1 },
-    },
-    vertexShader: `
+// const overlayGeometry = new THREE.PlaneBufferGeometry(2, 2, 1, 1)
+// const overlayMaterial = new THREE.ShaderMaterial({
+//     transparent: true,
+//     uniforms: {
+//         uAlpha: { value: 1 },
+//     },
+//     vertexShader: `
 
-        void main()
-        {
-            // vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-            // vec4 viewPosition = viewMatrix * modelPosition;
-            // vec4 projectedPosition = projectionMatrix * viewPosition;
+//         void main()
+//         {
+//             // vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+//             // vec4 viewPosition = viewMatrix * modelPosition;
+//             // vec4 projectedPosition = projectionMatrix * viewPosition;
 
-            // vec4 pos = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-            vec4 pos = vec4(position,1.0);
+//             // vec4 pos = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+//             vec4 pos = vec4(position,1.0);
 
-            gl_Position = pos;
-        }
-    `,
-    fragmentShader: `
+//             gl_Position = pos;
+//         }
+//     `,
+//     fragmentShader: `
 
-    uniform float uAlpha;
+//     uniform float uAlpha;
 
-    void main()
-    {
-        vec4 color = vec4(0.0,0.0,0.0,uAlpha);
+//     void main()
+//     {
+//         vec4 color = vec4(0.0,0.0,0.0,uAlpha);
 
-        gl_FragColor = vec4(color);
-    }
+//         gl_FragColor = vec4(color);
+//     }
 
-    `,
-})
-const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
-scene.add(overlay)
+//     `,
+// })
+// const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
+// scene.add(overlay)
 
 /**
  * Water
  */
 // Geometry
-const waterGeometry = new THREE.PlaneGeometry(2, 2, 256, 256)
+const waterGeometry = new THREE.PlaneGeometry(2, 2, 384, 384)
 
 // Color
 debugObject.depthColor = '#186691'
 debugObject.surfaceColor = '#9bd8ff'
-debugObject.fogColor = '#9bd8ff'
-
+debugObject.fogColor = '#ffffff'
 // Fog
-const fogColor = debugObject.fogColor
-const fog = new THREE.Fog(fogColor, 0, 2)
+const fog = new THREE.Fog(debugObject.fogColor, 1, 2)
 scene.fog = fog
+
+debugObject.fog = scene.fog ? true : false
+debugObject.fogColor = debugObject.fogColor || false
+debugObject.fogNear = scene.fog?.near || 0
+debugObject.fogFar = scene.fog?.far || 0
 
 // Material
 const waterMaterial = new THREE.ShaderMaterial({
+    wireframe: false,
     vertexShader: waterVertexShader,
     fragmentShader: waterFragmentShader,
     uniforms: {
@@ -139,15 +146,16 @@ const waterMaterial = new THREE.ShaderMaterial({
         uColorOffset: { value: 0.08 },
         uColorMultiplier: { value: 5 },
 
-        fogColor: { type: 'c', value: scene.fog.color },
-        fogNear: { type: 'f', value: scene.fog.near },
-        fogFar: { type: 'f', value: scene.fog.far },
+        fogColor: { type: 'c', value: scene.fog?.color || false },
+        fogNear: { type: 'f', value: scene.fog?.near || false },
+        fogFar: { type: 'f', value: scene.fog?.far || false },
     },
     fog: true,
     side: THREE.DoubleSide,
 })
 
 // Degug
+gui.add(waterMaterial, 'wireframe').name('Wireframe')
 gui.add(waterMaterial.uniforms.uBigWavesElevation, 'value').min(0).max(1).step(0.001).name('uBigWavesElevation')
 gui.add(waterMaterial.uniforms.uBigWavesFrequency.value, 'x').min(0).max(10).step(0.001).name('uBigWavesFrequencyX')
 gui.add(waterMaterial.uniforms.uBigWavesFrequency.value, 'y').min(0).max(10).step(0.001).name('uBigWavesFrequencyY')
@@ -167,8 +175,19 @@ gui.addColor(debugObject, 'surfaceColor')
     .name('surfaceColor')
     .onChange(() => {
         waterMaterial.uniforms.uSurfaceColor.value.set(debugObject.surfaceColor)
-        waterMaterial.uniforms.fogColor.value.set(debugObject.surfaceColor)
-        renderer.setClearColor(debugObject.surfaceColor)
+    })
+
+gui.add(debugObject, 'fog')
+    .name('Fog Enabled')
+    .onChange(() => {
+        // add fog
+        if (debugObject.fog) {
+            scene.fog.far = debugObject.fogFar
+            scene.fog.near = debugObject.fogNear
+        } // remove fog
+        else {
+            scene.fog.far = 30
+        }
     })
 
 gui.addColor(debugObject, 'fogColor')
@@ -212,13 +231,25 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0.25, 1, 1)
+const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
+// const cameraInitialPosition = new THREE.Vector3(0.25, 1, 1)
+// const cameraInitialPosition = new THREE.Vector3(-0.042, -0.325, -0.077)
+const cameraInitialPosition = new THREE.Vector3(-0.521, -0.471, -0.831)
+camera.position.set(cameraInitialPosition.x, cameraInitialPosition.y, cameraInitialPosition.z)
 scene.add(camera)
+
+// gui.add(camera.position, 'x').min(-10).max(10).step(0.01).name('CameraX')
+// gui.add(camera.position, 'y').min(-10).max(10).step(0.01).name('CameraY')
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
+controls.target = new THREE.Vector3(-0.0422, -0.3255, -0.0773)
+
+// controls.addEventListener('end', (e) => {
+//     console.log('camera position', controls.object.position)
+//     console.log('camera target', controls.target)
+// })
 
 /**
  * Renderer
@@ -243,11 +274,35 @@ const tick = () => {
     // Update controls
     controls.update()
     stats.update()
+
+    // console.log(camera.position)
     // Render
     renderer.render(scene, camera)
 
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
 }
+
+/**
+ * ! Fullscreen
+ */
+window.addEventListener('dblclick', () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+    const fullscreenTarget = body || canvas
+
+    if (!fullscreenElement) {
+        if (fullscreenTarget.requestFullscreen) {
+            fullscreenTarget.requestFullscreen()
+        } else if (fullscreenTarget.webkitRequestFullscreen) {
+            fullscreenTarget.webkitRequestFullscreen()
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen()
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen()
+        }
+    }
+})
 
 tick()

@@ -10,9 +10,6 @@ uniform float uSmallWavesFrequency;
 uniform float uSmallWavesSpeed;
 uniform float uSmallWavesIterations;
 
-uniform vec3 fogColor;
-varying vec3 vFogColor;
-
 varying float vElevation;
 
 //	Classic Perlin 3D Noise
@@ -125,5 +122,4 @@ void main()
 
     //Varyings
     vElevation = elevation;
-    vFogColor = fogColor;
 }

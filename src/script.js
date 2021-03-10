@@ -29,7 +29,7 @@ const debugObject = {}
  */
 
 /**
- * Loaders
+ * TODO: CHECK github ssh...
  */
 
 const loadingBarElement = document.querySelector('.loading-bar')

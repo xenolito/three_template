@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { gsap } from 'gsap'
+import overlayLoading from './modules/loadingOverlay'
 
 import waterVertexShader from './shaders/water/vertex.glsl'
 import waterFragmentShader from './shaders/water/fragment.glsl'
@@ -26,11 +27,7 @@ const gui = new dat.GUI({ width: 340 })
 const debugObject = {}
 
 /**
- * ! Loading
- */
-
-/**
- * TODO: CHECK github ssh...
+ * ! LoadManager
  */
 
 const loadingBarElement = document.querySelector('.loading-bar')
@@ -39,7 +36,7 @@ const loadingManager = new THREE.LoadingManager(
     () => {
         if (dc) dc.kill()
         var dc = gsap.delayedCall(0.5, () => {
-            gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0 })
+            gsap.to(overlay.material.uniforms.uAlpha, { duration: 3, value: 0 })
             loadingBarElement.classList.add('ended')
             loadingBarElement.style.transform = ''
         })
@@ -53,6 +50,8 @@ const loadingManager = new THREE.LoadingManager(
 )
 
 //! Loaders
+const textureLoader = new THREE.TextureLoader()
+
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath('./draco/')
 
@@ -71,6 +70,15 @@ const canvas = document.querySelector('canvas.webgl')
 // Scene
 const scene = new THREE.Scene()
 
+const overlay = overlayLoading(scene)
+
+/*------------------------------------------------------------------------------------------------------*
+                        //!MODELS
+\*------------------------------------------------------------------------------------------------------*/
+gltfLoader.load('./Portal.glb', (gltf) => {
+    console.log(gltf.scene)
+})
+
 /**
  *  Objects
  *
@@ -84,46 +92,6 @@ const cube_material = new THREE.MeshBasicMaterial({
 const cube = new THREE.Mesh(cube_geometry, cube_material)
 
 scene.add(cube)
-
-/**
- *  ! Loader Overlay
- */
-
-// const overlayGeometry = new THREE.PlaneBufferGeometry(2, 2, 1, 1)
-// const overlayMaterial = new THREE.ShaderMaterial({
-//     transparent: true,
-//     uniforms: {
-//         uAlpha: { value: 1 },
-//     },
-//     vertexShader: `
-
-//         void main()
-//         {
-//             // vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-//             // vec4 viewPosition = viewMatrix * modelPosition;
-//             // vec4 projectedPosition = projectionMatrix * viewPosition;
-
-//             // vec4 pos = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-//             vec4 pos = vec4(position,1.0);
-
-//             gl_Position = pos;
-//         }
-//     `,
-//     fragmentShader: `
-
-//     uniform float uAlpha;
-
-//     void main()
-//     {
-//         vec4 color = vec4(0.0,0.0,0.0,uAlpha);
-
-//         gl_FragColor = vec4(color);
-//     }
-
-//     `,
-// })
-// const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
-// scene.add(overlay)
 
 // Degug
 // gui.add(cube, 'width').name('Cube_Width')
@@ -166,9 +134,6 @@ scene.add(camera)
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 
-const axesHelper = new THREE.AxesHelper(2)
-scene.add(axesHelper)
-
 // controls.target = new THREE.Vector3(-0.0422, -0.3255, -0.0773)
 
 // controls.addEventListener('end', (e) => {
@@ -181,6 +146,7 @@ scene.add(axesHelper)
  */
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
+    antialias: true,
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))

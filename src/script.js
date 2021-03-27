@@ -73,25 +73,41 @@ const scene = new THREE.Scene()
 const overlay = overlayLoading(scene)
 
 /*------------------------------------------------------------------------------------------------------*
+                        //! MATERIALS && TEXTURES
+\*------------------------------------------------------------------------------------------------------*/
+// baked Texture
+const bakedTexture = textureLoader.load('./baked.jpg')
+bakedTexture.flipY = false
+bakedTexture.encoding = THREE.sRGBEncoding
+
+// Pole light material
+const poleLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffe5 })
+const portalLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
+
+// Baked material
+const bakedMaterial = new THREE.MeshBasicMaterial({ map: bakedTexture })
+
+/*------------------------------------------------------------------------------------------------------*
                         //!MODELS
 \*------------------------------------------------------------------------------------------------------*/
 gltfLoader.load('./Portal.glb', (gltf) => {
-    console.log(gltf.scene)
+    scene.add(gltf.scene)
+
+    // Get each object
+    const bakedMesh = gltf.scene.children.find((child) => child.name === 'merged')
+    const portalLightMesh = gltf.scene.children.find((child) => child.name === 'portalLight')
+    const poleLightAMesh = gltf.scene.children.find((child) => child.name === 'poleLightA')
+    const poleLightBMesh = gltf.scene.children.find((child) => child.name === 'poleLightB')
+
+    // console.log(`portal = ${portalLightMesh}`)
+    // console.log(`pole light A = ${poleLightAMesh}`)
+    // console.log(`pole light B = ${poleLightBMesh}`)
+
+    bakedMesh.material = bakedMaterial
+    poleLightAMesh.material = poleLightMaterial
+    poleLightBMesh.material = poleLightMaterial
+    portalLightMesh.material = portalLightMaterial
 })
-
-/**
- *  Objects
- *
- */
-
-const cube_geometry = new THREE.BoxGeometry(1, 1, 1)
-const cube_material = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-})
-
-const cube = new THREE.Mesh(cube_geometry, cube_material)
-
-scene.add(cube)
 
 // Degug
 // gui.add(cube, 'width').name('Cube_Width')
@@ -124,7 +140,7 @@ window.addEventListener('resize', () => {
 // Base camera
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
 // const cameraInitialPosition = new THREE.Vector3(-0.521, -0.471, -0.831)
-camera.position.set(0, 0, 6)
+camera.position.set(2, 2, 6)
 scene.add(camera)
 
 // gui.add(camera.position, 'x').min(-10).max(10).step(0.01).name('CameraX')
@@ -133,6 +149,10 @@ scene.add(camera)
 // Controls
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
+controls.maxPolarAngle = Math.PI * 0.4
+controls.maxDistance = 15
+controls.minDistance = 3
+// controls.minPolarAngle = Math.PI * 0.5
 
 // controls.target = new THREE.Vector3(-0.0422, -0.3255, -0.0773)
 
@@ -150,6 +170,7 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.outputEncoding = THREE.sRGBEncoding
 // renderer.setClearColor(0x000000)
 
 /**
